@@ -10,7 +10,7 @@ Registration spends the user's money. Read [connect-to-osir](/.well-known/agent-
 ## The flow
 
 1. **Re-check availability and price.** Someone may have taken the name while you were talking. See [check-domain-availability](/.well-known/agent-skills/check-domain-availability/SKILL.md). Confirm `premium` is false, or that the user knows the premium price and that it recurs every year.
-2. **Make sure you are signed in.** `getAuthStatus`. If not, `loginWithDevice`, then poll `checkDeviceLoginStatus`, then pass the `sessionKey` on every later call.
+2. **Make sure you are signed in.** The dependable signal is the account action itself: an unauthenticated call comes back with `isError` and the text `Authentication required. Call loginWithDevice ...`, which tells you exactly what to do next. Do not gate the flow on `getAuthStatus` alone (see the caveat below). When you do need to sign in, call `loginWithDevice`, poll `checkDeviceLoginStatus`, then pass the `sessionKey` on every later call.
 3. **Call `registerDomain`.** It does **not** register anything. It returns an `actionId` and an itemized summary.
 4. **Show the user that summary, with the total, and wait.** Quote the all-in figure including the $0.20/yr ICANN fee on gTLDs and processing (3% or $0.30 minimum).
 5. **On explicit approval, call `executeConfirmedAction`** with the `actionId`.
@@ -41,3 +41,19 @@ Afterwards you can set records ([manage-dns-records](/.well-known/agent-skills/m
 - **Trademarks.** A fan site on a club or brand name can be taken off the user. Flag the risk; do not give legal advice.
 - **Letting it lapse.** Set `updateDomainAutoRenew` on, or tell the user the expiry date. Recovery after expiry costs far more than renewal.
 - **Assuming registration is instant everywhere.** Most TLDs are immediate; some registries review first.
+
+## A caveat on `getAuthStatus`
+
+Verified against the live server on 2026-11-02: when you are **not** signed in, `getAuthStatus`
+returns `{"authenticated": false, "username": null, "tokenExpiresIn": null}` with `isError: false`.
+The data is correct, but the tool's declared `outputSchema` types `username` as `string` and
+`tokenExpiresIn` as `integer` and permits neither to be null. A client that validates structured
+output against that schema therefore rejects the response and surfaces a hard error, even though
+nothing went wrong. The unauthenticated case is the common one for a new agent, so this is the
+default path rather than an edge case.
+
+Two ways through it. Read the text block, `content[0].text`, which carries the same JSON and is
+unaffected. Or skip the probe entirely and let the account action report it, which is what step 2
+above now recommends, because it is correct on every client and saves a round trip.
+
+Reported to the backend. Expect the schema to allow null, or the keys to be omitted when absent.

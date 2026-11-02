@@ -39,7 +39,7 @@ Three paths:
 2. **OAuth.** Connect to `/mcp/oauth` with client id `mcp-client`. Your Bearer token is used automatically and you never handle a `sessionKey`.
 3. **Create an account without a browser.** `createAccount` then `verifyAccount`. Useful for headless agents.
 
-`getAuthStatus` tells you where you stand. A 401 means you are anonymous, not that you are blocked: re-read the table above and check whether the thing you want is actually an account action.
+`getAuthStatus` reports where you stand, but it does **not** answer with a 401 when you are anonymous. Verified live on 2026-11-02: it returns `{"authenticated": false, "username": null, "tokenExpiresIn": null}` and `isError: false`. Its declared `outputSchema` forbids those nulls, so a client that validates structured output rejects a response that was actually fine. Read `content[0].text` instead, or simply attempt the account action and read its error, which is the more reliable signal on any client. Either way, being anonymous is not being blocked: re-read the table above and check whether the thing you want is actually an account action.
 
 ## The confirmation gate
 
